@@ -2,9 +2,7 @@
 This bot is an assistant for medical professionals in interpreting the results of patient clustering.  
   
 # ABOUT:  
-This chatbot was developed specifically for medical experts as an assistant in the interpretation of patient clustering results. The chatbot is based on the algorithm   
-described in the article [3]. This method is based on statistical inference and allows to get the description of the clusters, determining the influence of a particular feature   
-on the difference between them. Based on the proposed approach, it is possible to determine the characteristic features for each cluster. More details on ideas and approaches to interpretation can be found in the articles [1,2].  
+This chatbot was developed specifically for medical experts as an assistant in the interpretation of patient clustering results. The chatbot is based on the algorithm described in the article [3]. This method is based on statistical inference and allows to get the description of the clusters, determining the influence of a particular feature on the difference between them. Based on the proposed approach, it is possible to determine the characteristic features for each cluster. More details on ideas and approaches to interpretation can be found in the articles [1,2].  
   
 # MAIN COMMANDS:  
 **/start** – receive a greeting from the bot and its brief description.  
