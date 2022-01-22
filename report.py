@@ -141,11 +141,12 @@ def create_clusters_info(pdf: canvas.Canvas, df: pd.DataFrame, significant_featu
                 pdf.showPage()
             f = f.replace("\n", "")
             if f in continuous:
-                fig = px.histogram(df, x=f, marginal='box')
+                fig = px.histogram(df[df["Clusters"] == feature[0]], x=f, marginal='box')
                 hist_plot_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
                 pdf.drawImage(hist_plot_img, 100, y, 400, 250)
             if f in categorical:
-                fig = px.histogram(df, x=f, category_orders=dict(clustert=df[f].unique()), nbins=8, text_auto=True)
+                fig = px.histogram(df[df["Clusters"] == feature[0]], x=f, category_orders=dict(clustert=df[f].unique()),
+                                   nbins=8, text_auto=True)
                 hist_plot_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
                 pdf.drawImage(hist_plot_img, 100, y, 400, 250)
             plt.clf()
