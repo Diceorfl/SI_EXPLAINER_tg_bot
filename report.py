@@ -14,15 +14,15 @@ import plotly.express as px
 
 
 def pca_plot(df: pd.DataFrame) -> bytes:
-    features = df.columns[:-1].copy()
-    x = df.loc[:, features].values
+    clusters = "Clusters"
+    x = df.loc[:, df.columns != clusters].values
     x = StandardScaler().fit_transform(x)
 
     pca = PCA(n_components=2)
     components = pca.fit_transform(x)
     total_var = pca.explained_variance_ratio_.sum() * 100
 
-    fig = px.scatter(components, x=0, y=1, color=df['Clusters'],
+    fig = px.scatter(components, x=0, y=1, color=df[clusters],
                      title=f'Total Explained Variance: {total_var:.2f}%', labels={'0': 'PC 1', '1': 'PC 2'})
 
     return fig.to_image(format="jpg")
@@ -89,7 +89,7 @@ def show_general_info(pdf: canvas.Canvas, df: pd.DataFrame, continuous: list, ca
         if y < 0:
             y = 800 - 260
             pdf.showPage()
-        fig = px.histogram(df, x='Clusters', y=feature, histfunc="avg", nbins=8, text_auto=True)
+        fig = px.histogram(df, x='Clusters', y=feature, histfunc="avg", nbins=len(df["Clusters"].unique()) * 2, text_auto=True)
         hist_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
         pdf.drawImage(hist_img, 100, y, 400, 250)
         plt.clf()
@@ -99,8 +99,8 @@ def show_general_info(pdf: canvas.Canvas, df: pd.DataFrame, continuous: list, ca
         if y < 0:
             y = 800 - 260
             pdf.showPage()
-        fig = px.histogram(df, x='Clusters', category_orders=dict(clustert=df['Clusters'].unique()),
-                           color='Clusters', pattern_shape=feature, nbins=8)
+        fig = px.histogram(df, x='Clusters', category_orders=dict(clusters=df['Clusters'].unique()),
+                           color='Clusters', pattern_shape=feature, nbins=len(df["Clusters"].unique()) * 2)
         hist_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
         pdf.drawImage(hist_img, 100, y, 400, 250)
         plt.clf()
@@ -109,26 +109,34 @@ def show_general_info(pdf: canvas.Canvas, df: pd.DataFrame, continuous: list, ca
     write_text(pdf, 40, y-20, text_lines)
 
 
-def find_differences(df: pd.DataFrame, differences: dict) -> dict:
-    result = {str(el): [] for el in set(df["Clusters"])}
+def find_differences(df: pd.DataFrame, differences: dict, continuous: list, categorical: list) -> dict:
+    clusters = "Clusters"
+    result = {str(el): [] for el in set(df[clusters])}
 
     for key in differences.keys():
-        msg = "Patients in cluster %s differ from patients in cluster %s in the following features:\n" % \
-              (str(key[0]), str(key[1]))
+        cluster1, cluster2 = str(key[0]), str(key[1])
+        msg = f'Patients in cluster {cluster1} differ from patients in cluster {cluster2} in the following features:\n'
         for feature in differences[key]:
-            average_value0 = str(np.mean(df[df["Clusters"] == key[0]][feature]))
-            average_value1 = str(np.mean(df[df["Clusters"] == key[1]][feature]))
-            msg += "%s: where the mean value for patients in cluster %s is %s and for patients in cluster %s is %s.\n" % \
-                   (feature, str(key[0]), average_value0, str(key[1]), average_value1)
-        result[str(key[0])].append(msg)
-        result[str(key[1])].append(msg)
+            feature = str(feature)
+            if feature in continuous:
+                average_value0 = np.mean(df[df[clusters] == cluster1][feature])
+                average_value1 = np.mean(df[df[clusters] == cluster2][feature])
+                msg += f'{feature}: where the mean value for patients in cluster {cluster1} is {average_value0:.3f} and ' \
+                       f'for patients in cluster {cluster2} is {average_value1:.3f}.\n'
+            if feature in categorical:
+                mode0 = df[df[clusters] == cluster1][feature].mode()[0]
+                mode1 = df[df[clusters] == cluster2][feature].mode()[0]
+                msg += f'{feature}: where is the most characteristic value for patients in the cluster {cluster1} is {mode0} ' \
+                       f'and for patients in cluster {cluster1} is {mode1}.\n'
+        result[cluster1].append(msg)
+        result[cluster2].append(msg)
 
     return result
 
 
 def create_clusters_info(pdf: canvas.Canvas, df: pd.DataFrame, significant_features: list, differences: dict,
                          continuous: list, categorical: list):
-    diff = find_differences(df.copy(), differences)
+    diff = find_differences(df.copy(), differences, continuous, categorical)
     for feature in significant_features[1:]:
         pdf.showPage()
         pdf.setFont("Times-Bold", 14)
@@ -145,8 +153,8 @@ def create_clusters_info(pdf: canvas.Canvas, df: pd.DataFrame, significant_featu
                 hist_plot_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
                 pdf.drawImage(hist_plot_img, 100, y, 400, 250)
             if f in categorical:
-                fig = px.histogram(df[df["Clusters"] == feature[0]], x=f, category_orders=dict(clustert=df[f].unique()),
-                                   nbins=8, text_auto=True)
+                fig = px.histogram(df[df["Clusters"] == feature[0]], x=f, category_orders=dict(clusters=df[f].unique()),
+                                   nbins=len(df[f].unique())*3, text_auto=True)
                 hist_plot_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
                 pdf.drawImage(hist_plot_img, 100, y, 400, 250)
             plt.clf()
@@ -188,7 +196,7 @@ class InterpretationReport(object):
                       "%s groups as follows:\n" % (self._df["Clusters"].count(), self._df["Clusters"].nunique())]
         write_text(self._pdf, 40, 365, text_lines)
         fig = px.histogram(self._df, x="Clusters", category_orders=dict(clustert=self._df["Clusters"].unique()),
-                           nbins=8, text_auto=True)
+                           nbins=len(self._df["Clusters"].unique()), text_auto=True)
         hist_img = ImageReader(BytesIO(fig.to_image(format="jpg")))
         self._pdf.drawImage(hist_img, 100, 50, 400, 300)
         plt.clf()
